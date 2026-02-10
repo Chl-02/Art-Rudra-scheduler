@@ -22,6 +22,8 @@ export default function TimeInput({ member, config, schedules, onBack }) {
   // 저장 상태
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  // 터치/마우스 충돌 방지
+  const isTouchDevice = useRef(false)
 
   const gridRef = useRef(null)
 
@@ -161,11 +163,16 @@ export default function TimeInput({ member, config, schedules, onBack }) {
   // 전역 마우스업/터치엔드 리스너 (드래그 종료)
   useEffect(() => {
     const endDrag = () => handleDragEnd()
+    const endTouch = () => {
+      handleDragEnd()
+      // 300ms 후 터치 플래그 리셋 (합성 mouse 이벤트 차단 후 해제)
+      setTimeout(() => { isTouchDevice.current = false }, 300)
+    }
     window.addEventListener('mouseup', endDrag)
-    window.addEventListener('touchend', endDrag)
+    window.addEventListener('touchend', endTouch)
     return () => {
       window.removeEventListener('mouseup', endDrag)
-      window.removeEventListener('touchend', endDrag)
+      window.removeEventListener('touchend', endTouch)
     }
   }, [handleDragEnd])
 
@@ -234,11 +241,16 @@ export default function TimeInput({ member, config, schedules, onBack }) {
                       data-slot={slot}
                       className={`time-cell ${isSelected ? (mode === 'available' ? 'cell-available' : 'cell-unavailable') : ''}`}
                       onMouseDown={(e) => {
+                        if (isTouchDevice.current) return
                         e.preventDefault()
                         handleDragStart(slot)
                       }}
-                      onMouseEnter={() => handleDragOver(slot)}
-                      onTouchStart={(e) => {
+                      onMouseEnter={() => {
+                        if (isTouchDevice.current) return
+                        handleDragOver(slot)
+                      }}
+                      onTouchStart={() => {
+                        isTouchDevice.current = true
                         handleDragStart(slot)
                       }}
                     >

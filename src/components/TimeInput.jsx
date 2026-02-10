@@ -33,6 +33,7 @@ export default function TimeInput({ member, config, schedules, onBack }) {
       const data = schedules[member.name]
       setSelectedSlots(new Set(data.slots || []))
       setMode(data.mode || 'available')
+      setSaved(true)
     }
   }, [member, schedules])
 

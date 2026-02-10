@@ -239,7 +239,9 @@ export default function TimeInput({ member, config, schedules, onBack }) {
                     <td
                       key={slot}
                       data-slot={slot}
-                      className={`time-cell ${isSelected ? (mode === 'available' ? 'cell-available' : 'cell-unavailable') : ''}`}
+                      className={`time-cell ${isSelected
+                        ? (mode === 'available' ? 'cell-available' : 'cell-unavailable')
+                        : (saved ? (mode === 'available' ? 'cell-unavailable' : 'cell-available') : '')}`}
                       onMouseDown={(e) => {
                         if (isTouchDevice.current) return
                         e.preventDefault()
@@ -254,7 +256,9 @@ export default function TimeInput({ member, config, schedules, onBack }) {
                         handleDragStart(slot)
                       }}
                     >
-                      {isSelected && (mode === 'available' ? '✓' : '✗')}
+                      {isSelected
+                        ? (mode === 'available' ? '✓' : '✗')
+                        : (saved ? (mode === 'available' ? '✗' : '✓') : '')}
                     </td>
                   )
                 })}

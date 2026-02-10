@@ -560,12 +560,14 @@ body {
 }
 
 .hour-label {
-  padding: 12px 8px;
+  padding: 2px 8px 0;
   font-size: 0.8rem;
   color: var(--text-secondary);
   background: var(--bg-surface);
   border-right: 1px solid var(--border-subtle);
   font-weight: 500;
+  vertical-align: top;
+  line-height: 1;
   white-space: nowrap;
 }
 
@@ -851,11 +853,13 @@ body {
 }
 
 .heatmap-hour {
-  padding: 10px 8px;
+  padding: 2px 8px 0;
   font-size: 0.8rem;
   color: var(--text-secondary);
   background: var(--bg-surface);
   border-right: 1px solid var(--border-subtle);
+  vertical-align: top;
+  line-height: 1;
 }
 
 .heatmap-cell {
@@ -873,6 +877,67 @@ body {
   box-shadow: inset 0 0 12px rgba(240, 208, 96, 0.3);
   color: #fff;
   font-weight: 700;
+}
+
+.heatmap-cell.heatmap-selected {
+  outline: 2px solid var(--gold);
+  outline-offset: -2px;
+}
+
+.slot-detail {
+  margin-top: 12px;
+  padding: 12px 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--gold);
+  border-radius: var(--radius-md);
+}
+
+.slot-detail-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.slot-detail-count {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+.slot-detail-close {
+  margin-left: auto;
+  padding: 2px 6px;
+  font-size: 0.8rem;
+}
+
+.slot-detail-group {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 4px;
+  font-size: 0.9rem;
+}
+
+.slot-detail-label {
+  flex-shrink: 0;
+  padding: 1px 8px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.available-label {
+  background: rgba(74, 222, 128, 0.2);
+  color: var(--success);
+}
+
+.unavailable-label {
+  background: rgba(239, 68, 68, 0.2);
+  color: var(--danger);
+}
+
+.slot-detail-names {
+  color: var(--text-primary);
 }
 
 /* 결과 하단 */
@@ -1056,11 +1121,16 @@ body {
    ============================================ */
 @media (max-width: 768px) {
   .app-header {
-    padding: 12px 16px;
+    padding: 10px 12px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--bg-primary);
+    border-bottom: 1px solid var(--border-subtle);
   }
 
   .app-title {
-    font-size: 1rem;
+    font-size: 0.95rem;
     letter-spacing: 1px;
   }
 
@@ -1069,56 +1139,98 @@ body {
   }
 
   .app-content {
-    padding: 16px 12px;
+    padding: 14px 10px;
   }
 
   /* 멤버 그리드: 2열 유지하되 간격 축소 */
   .member-grid {
-    gap: 12px;
+    gap: 10px;
   }
 
   .member-card {
-    padding: 18px 12px;
+    padding: 16px 10px;
   }
 
   .member-icon {
-    font-size: 1.6rem;
+    font-size: 1.5rem;
   }
 
   .member-name {
-    font-size: 0.95rem;
+    font-size: 0.9rem;
   }
 
-  /* 시간 격자: 터치 친화적으로 셀 크기 확대 */
+  .member-class {
+    font-size: 0.7rem;
+  }
+
+  .select-title {
+    font-size: 1.2rem;
+  }
+
+  .select-subtitle {
+    font-size: 0.8rem;
+  }
+
+  /* 시간 입력 안내문 */
+  .input-subtitle {
+    font-size: 0.78rem;
+    line-height: 1.4;
+  }
+
+  .input-title {
+    font-size: 1.1rem;
+  }
+
+  /* 시간 격자: 터치 친화적 셀 크기 */
   .time-cell {
-    min-width: 42px;
+    min-width: 40px;
     height: 44px;
-    font-size: 0.75rem;
+    font-size: 0.8rem;
   }
 
   .day-header {
-    padding: 10px 4px;
-    font-size: 0.85rem;
+    padding: 10px 2px;
+    font-size: 0.8rem;
   }
 
   .hour-label {
-    padding: 10px 6px;
-    font-size: 0.75rem;
+    padding: 2px 4px 0;
+    font-size: 0.7rem;
   }
 
   .time-header-corner {
-    width: 48px;
-    min-width: 48px;
+    width: 40px;
+    min-width: 40px;
   }
 
-  /* 컨트롤 버튼 축소 */
+  /* 컨트롤 버튼: 가로 스크롤 대신 줄바꿈 */
   .input-controls {
     gap: 6px;
   }
 
   .input-controls .btn {
-    padding: 8px 14px;
-    font-size: 0.8rem;
+    padding: 8px 12px;
+    font-size: 0.78rem;
+  }
+
+  /* 큰 버튼 모바일 대응 */
+  .btn-large {
+    padding: 12px 20px;
+    font-size: 0.9rem;
+    width: 100%;
+  }
+
+  .select-actions {
+    padding: 0 4px;
+  }
+
+  .footer-buttons {
+    width: 100%;
+  }
+
+  .footer-buttons .btn {
+    flex: 1;
+    min-width: 0;
   }
 
   /* 결과 아이템 세로 배치 */
@@ -1126,17 +1238,52 @@ body {
     flex-direction: column;
     align-items: flex-start;
     gap: 4px;
+    font-size: 0.85rem;
   }
 
   .result-time {
     min-width: auto;
   }
 
-  /* 히트맵 셀 축소 */
+  .result-card-title {
+    font-size: 0.95rem;
+  }
+
+  .result-item-adjust {
+    font-size: 0.82rem;
+    word-break: keep-all;
+  }
+
+  /* 히트맵 셀 */
   .heatmap-cell {
-    min-width: 38px;
-    height: 38px;
+    min-width: 36px;
+    height: 36px;
     font-size: 0.75rem;
+  }
+
+  .heatmap-cell.heatmap-selected {
+    outline-width: 2px;
+  }
+
+  /* 슬롯 상세 정보 */
+  .slot-detail {
+    padding: 10px 12px;
+    font-size: 0.85rem;
+  }
+
+  .slot-detail-header {
+    font-size: 0.9rem;
+  }
+
+  /* 탭 버튼 */
+  .results-tabs {
+    gap: 0;
+  }
+
+  .tab-btn {
+    flex: 1;
+    font-size: 0.85rem;
+    padding: 10px 8px;
   }
 
   /* 멤버 편집: 세로 배치 */
@@ -1145,15 +1292,67 @@ body {
   }
 
   .member-edit-row .input-field {
-    min-width: 100px;
+    min-width: 0;
+    flex: 1;
   }
 
   .member-edit-row .select-field {
-    min-width: 90px;
+    min-width: 80px;
   }
 
-  .select-title {
-    font-size: 1.3rem;
+  /* 푸터 */
+  .app-footer {
+    font-size: 0.7rem;
+    padding: 12px;
+  }
+
+  /* 설정 */
+  .settings-title {
+    font-size: 1.1rem;
+  }
+
+  .section-title {
+    font-size: 0.95rem;
+  }
+}
+
+/* 소형 모바일 (360px 이하) */
+@media (max-width: 360px) {
+  .app-content {
+    padding: 10px 6px;
+  }
+
+  .member-grid {
+    gap: 8px;
+  }
+
+  .member-card {
+    padding: 14px 8px;
+  }
+
+  .time-cell {
+    min-width: 34px;
+    height: 40px;
+  }
+
+  .heatmap-cell {
+    min-width: 30px;
+    height: 30px;
+    font-size: 0.7rem;
+  }
+
+  .hour-label {
+    font-size: 0.65rem;
+    padding: 2px 2px 0;
+  }
+
+  .time-header-corner {
+    width: 34px;
+    min-width: 34px;
+  }
+
+  .day-header {
+    font-size: 0.7rem;
   }
 }
 

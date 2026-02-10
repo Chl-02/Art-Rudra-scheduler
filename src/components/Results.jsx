@@ -9,6 +9,7 @@ import {
 export default function Results({ config, schedules, onBack }) {
   const [copied, setCopied] = useState(false)
   const [activeTab, setActiveTab] = useState('recommend') // 'recommend' | 'heatmap'
+  const [selectedSlot, setSelectedSlot] = useState(null) // 히트맵 선택된 슬롯
 
   const timeRange = config?.timeRange || { start: 20, end: 25 }
   const members = config?.members || []
@@ -59,7 +60,7 @@ export default function Results({ config, schedules, onBack }) {
     <div className="results">
       {/* 헤더 */}
       <div className="results-header">
-        <h2 className="results-title">📊 운명의 시간 결과</h2>
+        <h2 className="results-title">📊 결과</h2>
         <p className="results-subtitle">
           {result.submittedCount}/{members.length}명 등록 완료
         </p>
@@ -87,7 +88,7 @@ export default function Results({ config, schedules, onBack }) {
           {result.submittedCount === 0 ? (
             <div className="empty-result">
               <p>아직 아무도 시간을 등록하지 않았습니다.</p>
-              <p>용사들의 시간 각인을 기다리는 중...</p>
+              <p>시간 선택을 기다리는 중...</p>
             </div>
           ) : (
             <>
@@ -142,11 +143,16 @@ export default function Results({ config, schedules, onBack }) {
                     <span className="result-icon">🔄</span> 조율 제안
                   </h3>
                   <ul className="result-list">
-                    {result.adjustments.map((adj, i) => (
+                    {result.adjustments.slice(0, 15).map((adj, i) => (
                       <li key={i} className="result-item result-item-adjust">
                         {adj.description}
                       </li>
                     ))}
+                    {result.adjustments.length > 15 && (
+                      <li className="result-item result-item-more">
+                        외 {result.adjustments.length - 15}건
+                      </li>
+                    )}
                   </ul>
                 </div>
               )}
@@ -210,9 +216,9 @@ export default function Results({ config, schedules, onBack }) {
                       return (
                         <td
                           key={slot}
-                          className={`heatmap-cell ${count === result.totalMembers && count > 0 ? 'heatmap-full' : ''}`}
+                          className={`heatmap-cell ${count === result.totalMembers && count > 0 ? 'heatmap-full' : ''} ${selectedSlot === slot ? 'heatmap-selected' : ''}`}
                           style={{ backgroundColor: getHeatmapColor(count) }}
-                          title={`${count}/${result.totalMembers}명 가능${info && info.unavailable.length > 0 ? ` (불가: ${info.unavailable.join(', ')})` : ''}`}
+                          onClick={() => setSelectedSlot(selectedSlot === slot ? null : slot)}
                         >
                           {count > 0 ? count : ''}
                         </td>
@@ -223,6 +229,34 @@ export default function Results({ config, schedules, onBack }) {
               </tbody>
             </table>
           </div>
+
+          {/* 선택된 슬롯 상세 정보 */}
+          {selectedSlot && result.slotAvailability[selectedSlot] && (() => {
+            const info = result.slotAvailability[selectedSlot]
+            const { day, hour } = parseSlot(selectedSlot)
+            const dayLabel = DAYS.find(d => d.key === day)?.label
+            return (
+              <div className="slot-detail">
+                <div className="slot-detail-header">
+                  <strong>{dayLabel}요일 {formatHour(hour)}</strong>
+                  <span className="slot-detail-count">{info.available.length}/{result.totalMembers}명 가능</span>
+                  <button className="btn btn-ghost slot-detail-close" onClick={() => setSelectedSlot(null)}>✕</button>
+                </div>
+                {info.available.length > 0 && (
+                  <div className="slot-detail-group">
+                    <span className="slot-detail-label available-label">가능</span>
+                    <span className="slot-detail-names">{info.available.join(', ')}</span>
+                  </div>
+                )}
+                {info.unavailable.length > 0 && (
+                  <div className="slot-detail-group">
+                    <span className="slot-detail-label unavailable-label">불가</span>
+                    <span className="slot-detail-names">{info.unavailable.join(', ')}</span>
+                  </div>
+                )}
+              </div>
+            )
+          })()}
         </div>
       )}
 

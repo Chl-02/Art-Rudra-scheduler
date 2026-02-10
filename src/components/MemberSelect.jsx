@@ -1,15 +1,15 @@
 import { useState } from 'react'
 
-// 직업별 아이콘 매핑
+// 직업별 아이콘 매핑 (아이온2 공식 직업 심볼)
 const CLASS_ICONS = {
-  '호법성': '⚔️',
-  '치유성': '💚',
-  '궁성': '🏹',
-  '마도성': '🔮',
+  '검성': '⚔️',
   '수호성': '🛡️',
-  '암살성': '🗡️',
-  '음유성': '🎵',
-  '정령성': '🌿'
+  '살성': '🗡️',
+  '궁성': '🏹',
+  '마도성': '🔥',
+  '정령성': '👻',
+  '치유성': '💚',
+  '호법성': '✨'
 }
 
 // 메인 화면 — 멤버 선택 카드 컴포넌트
@@ -33,9 +33,9 @@ export default function MemberSelect({ config, schedules, onSelect, onViewResult
   return (
     <div className="member-select">
       <div className="select-title-area">
-        <h2 className="select-title">용사를 선택하시오</h2>
+        <h2 className="select-title">닉네임 선택</h2>
         <p className="select-subtitle">
-          시간을 각인할 용사의 이름을 선택하세요
+          시간을 선택할 닉네임을 선택하세요
         </p>
         <div className="submit-status">
           <span className="submit-count">{submittedCount}</span>
@@ -83,7 +83,7 @@ export default function MemberSelect({ config, schedules, onSelect, onViewResult
       {/* 결과 보기 버튼 */}
       <div className="select-actions">
         <button className="btn btn-gold btn-large" onClick={onViewResults}>
-          📊 운명의 시간 확인하기
+          📊 결과 확인하기
         </button>
       </div>
     </div>

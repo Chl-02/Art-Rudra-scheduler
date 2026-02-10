@@ -15,7 +15,7 @@ export const DAYS = [
 // 시간 표시 포맷 (24시간제 → 읽기 쉬운 한글 표기)
 export function formatHour(hour) {
   const h = hour >= 24 ? hour - 24 : hour
-  if (h === 0) return '자정'
+  if (h === 0) return '자정(0시)'
   if (h < 12) return `오전 ${h}시`
   if (h === 12) return '오후 12시'
   return `오후 ${h - 12}시`
@@ -141,30 +141,45 @@ export function analyzeSchedules(schedules, members, timeRange) {
     }))
 
   // 🔄 인접 시간 조율 제안 생성
-  const adjustments = []
+  // 1명만 빠지는 각 시간대에 대해, 빠진 사람이 ±1~2시간 이내에 가능한 모든 경우를 제안
+  // 예: 10시에 C 불가, C가 9시·11시 둘 다 가능 → 2가지 조율 제안 모두 표시
+  const rawAdjustments = []
+  const seenKeys = new Set()
   for (const item of oneMissing) {
     const { day, hour } = parseSlot(item.slot)
     const missingName = item.missing[0]
     const memberAvailable = getAvailableSlots(schedules[missingName], allSlots)
+    const dayLabel = DAYS.find(d => d.key === day)?.label || day
 
-    // ±1~2시간 이내에 가능한 시간이 있는지 확인
     for (const offset of [-1, 1, -2, 2]) {
       const nearbyHour = hour + offset
       const nearbySlot = makeSlot(day, nearbyHour)
-      if (memberAvailable.includes(nearbySlot)) {
-        const direction = offset > 0 ? '늦추면' : '앞당기면'
-        adjustments.push({
-          targetSlot: item.slot,
-          missingMember: missingName,
-          nearbySlot,
-          offset: Math.abs(offset),
-          direction,
-          description: `${missingName}님이 ${formatHour(nearbyHour)}까지 가능 → ${formatHour(hour)}로 ${Math.abs(offset)}시간 ${direction} 전원 가능`
-        })
-        break // 가장 가까운 시간만 제안
-      }
+      if (!memberAvailable.includes(nearbySlot)) continue
+
+      // 중복 제거 (같은 슬롯·같은 사람·같은 근처시간)
+      const key = `${item.slot}|${missingName}|${nearbySlot}`
+      if (seenKeys.has(key)) continue
+      seenKeys.add(key)
+
+      // 빠진 사람 관점: 11시에 가능한데 10시 모임 → "앞당기면"
+      //                 9시에 가능한데 10시 모임 → "늦추면"
+      const direction = offset > 0 ? '앞당기면' : '늦추면'
+      rawAdjustments.push({
+        targetSlot: item.slot,
+        missingMember: missingName,
+        nearbySlot,
+        offset: Math.abs(offset),
+        direction,
+        description: `${dayLabel}요일 ${formatHour(hour)}에 ${missingName}님 불가 → ${formatHour(nearbyHour)}에서 ${Math.abs(offset)}시간 ${direction} 전원 가능`
+      })
     }
   }
+
+  // 정렬: ±1시간 제안 우선, 같은 offset이면 요일·시간 순
+  const adjustments = rawAdjustments.sort((a, b) => {
+    if (a.offset !== b.offset) return a.offset - b.offset
+    return allSlots.indexOf(a.targetSlot) - allSlots.indexOf(b.targetSlot)
+  })
 
   // 📊 2명 빠지는 시간
   const twoMissing = allSlots
@@ -192,7 +207,7 @@ export function analyzeSchedules(schedules, members, timeRange) {
  * 결과를 클립보드용 텍스트로 변환
  */
 export function formatResultText(result, members) {
-  let text = `📅 이번주 루드라 스케줄 결과\n\n`
+  let text = `📅 이번주 Art 루드라 스케줄 결과\n\n`
 
   // 전원 가능
   if (result.allAvailableGroups.length > 0) {

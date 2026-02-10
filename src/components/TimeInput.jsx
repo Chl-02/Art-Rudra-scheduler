@@ -174,12 +174,12 @@ export default function TimeInput({ member, config, schedules, onBack }) {
       {/* 헤더: 멤버 정보 */}
       <div className="input-header">
         <h2 className="input-title">
-          ⏰ {member?.name}님의 운명의 시간
+          ⏰ {member?.name}님 시간
         </h2>
         <p className="input-subtitle">
           {mode === 'available'
-            ? '가능한 시간을 선택하세요 (드래그로 여러 칸 선택 가능)'
-            : '불가능한 시간을 선택하세요 (나머지는 자동으로 가능 처리)'}
+            ? '가능한 시간을 선택하세요 (드래그로 여러 칸 선택 가능, 요일 클릭 시 전체 선택, 아래 버튼으로 불가능한 시간 선택 모드 전환 가능)'
+            : '불가능한 시간을 선택하세요 (나머지는 자동으로 가능 처리, 요일 클릭 시 전체 선택, 아래 버튼으로 가능한 시간 선택 모드 전환 가능)'}
         </p>
       </div>
 
@@ -268,7 +268,7 @@ export default function TimeInput({ member, config, schedules, onBack }) {
             onClick={handleSave}
             disabled={saving}
           >
-            {saving ? '각인 중...' : saved ? '✓ 각인 완료!' : '⚡ 시간 각인하기'}
+            {saving ? '저장 중...' : saved ? '✓ 선택 완료!' : '⚡ 시간 선택하기'}
           </button>
         </div>
       </div>

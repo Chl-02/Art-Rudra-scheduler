@@ -4,7 +4,7 @@ import { doc, setDoc, getDoc, collection, addDoc } from 'firebase/firestore'
 
 // 직업 목록 (드롭다운용)
 const CLASS_OPTIONS = [
-  '호법성', '치유성', '궁성', '마도성', '수호성', '암살성', '음유성', '정령성'
+  '검성', '수호성', '살성', '궁성', '마도성', '정령성', '호법성', '치유성'
 ]
 
 // 설정 화면 컴포넌트

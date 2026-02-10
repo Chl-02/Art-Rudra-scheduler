@@ -143,7 +143,7 @@ export default function App() {
         <div className="header-center" onClick={handleBack} style={{ cursor: 'pointer' }}>
           <h1 className="app-title">
             <span className="title-icon">⚔️</span>
-            루드라 스케줄러
+            Art 루드라 스케줄러
           </h1>
         </div>
         <div className="header-right">
@@ -202,7 +202,7 @@ export default function App() {
 
       {/* 하단 푸터 */}
       <footer className="app-footer">
-        <p>루드라 원정대 스케줄러 · 아이온2</p>
+        <p>Art 루드라 원정대 스케줄러 · 아이온2</p>
       </footer>
     </div>
   )

@@ -207,7 +207,7 @@ export function analyzeSchedules(schedules, members, timeRange) {
  * 결과를 클립보드용 텍스트로 변환
  */
 export function formatResultText(result, members) {
-  let text = `📅 이번주 Art 루드라 스케줄 결과\n\n`
+  let text = `📅 이번주 아티 성역 스케줄 결과\n\n`
 
   // 전원 가능
   if (result.allAvailableGroups.length > 0) {

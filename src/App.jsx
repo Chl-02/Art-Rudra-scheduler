@@ -120,7 +120,7 @@ export default function App() {
         <div className="loading-container">
           <div className="loading-emblem">⚔️</div>
           <div className="loading-spinner" />
-          <p className="loading-text">운명의 기록을 불러오는 중...</p>
+          <p className="loading-text">로딩중...</p>
         </div>
       </div>
     )
@@ -143,7 +143,7 @@ export default function App() {
         <div className="header-center" onClick={handleBack} style={{ cursor: 'pointer' }}>
           <h1 className="app-title">
             <span className="title-icon">⚔️</span>
-            Art 루드라 스케줄러
+            아티 성역 스케줄러
           </h1>
         </div>
         <div className="header-right">
@@ -202,7 +202,7 @@ export default function App() {
 
       {/* 하단 푸터 */}
       <footer className="app-footer">
-        <p>Art 루드라 원정대 스케줄러 · 아이온2</p>
+        <p>아티 성역 원정대 스케줄러 · 아이온2</p>
       </footer>
     </div>
   )

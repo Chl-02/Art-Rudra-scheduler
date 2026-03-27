@@ -7,16 +7,26 @@ const CLASS_OPTIONS = [
   '검성', '수호성', '살성', '궁성', '마도성', '정령성', '호법성', '치유성'
 ]
 
+const TIME_UNIT_OPTIONS = [
+  { value: 60, label: '1시간' },
+  { value: 30, label: '30분' },
+  { value: 10, label: '10분' }
+]
+
 // 설정 화면 컴포넌트
-// 팀 멤버 수정, 시간 범위 설정, 전체 초기화 기능
-export default function Settings({ config, onBack }) {
+// 팀 멤버 수정, 시간 범위 설정, 시간 단위 설정, 전체 초기화 기능
+export default function Settings({ config, schedules, onBack }) {
   const [members, setMembers] = useState([])
   const [timeStart, setTimeStart] = useState(20)
   const [timeEnd, setTimeEnd] = useState(25)
+  const [timeUnit, setTimeUnit] = useState(60)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [showResetConfirm, setShowResetConfirm] = useState(false)
   const [resetting, setResetting] = useState(false)
+
+  // 스케줄 데이터가 있는지 확인
+  const hasScheduleData = schedules && Object.keys(schedules).length > 0
 
   // 설정값 로드
   useEffect(() => {
@@ -24,6 +34,7 @@ export default function Settings({ config, onBack }) {
       setMembers(config.members?.map(m => ({ ...m })) || [])
       setTimeStart(config.timeRange?.start || 20)
       setTimeEnd(config.timeRange?.end || 25)
+      setTimeUnit(config.timeUnit || 60)
     }
   }, [config])
 
@@ -63,6 +74,16 @@ export default function Settings({ config, onBack }) {
     setSaved(false)
   }
 
+  // 시간 단위 변경
+  const handleTimeUnitChange = (unit) => {
+    if (hasScheduleData) {
+      alert('스케줄 데이터가 있어 시간 단위를 변경할 수 없습니다.\n먼저 스케줄을 초기화해주세요.')
+      return
+    }
+    setTimeUnit(unit)
+    setSaved(false)
+  }
+
   // 설정 저장
   const handleSave = async () => {
     // 빈 이름 체크
@@ -87,7 +108,8 @@ export default function Settings({ config, onBack }) {
           name: m.name.trim(),
           class: m.class
         })),
-        timeRange: { start: timeStart, end: timeEnd }
+        timeRange: { start: timeStart, end: timeEnd },
+        timeUnit
       })
       setSaved(true)
     } catch (error) {
@@ -226,6 +248,30 @@ export default function Settings({ config, onBack }) {
         </p>
       </div>
 
+      {/* 시간 단위 설정 */}
+      <div className="settings-section">
+        <h3 className="section-title">⏱️ 시간 단위 설정 (기본값)</h3>
+        <p className="setting-hint">
+          멤버가 시간 입력 시 사용할 기본 단위입니다. 개인별로 변경할 수도 있습니다.
+        </p>
+        <div className="time-unit-buttons">
+          {TIME_UNIT_OPTIONS.map(opt => (
+            <button
+              key={opt.value}
+              className={`btn btn-unit ${timeUnit === opt.value ? 'btn-unit-active' : 'btn-outline'}`}
+              onClick={() => handleTimeUnitChange(opt.value)}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+        {hasScheduleData && (
+          <p className="setting-warning">
+            스케줄 데이터가 있어 변경할 수 없습니다. 초기화 후 변경 가능합니다.
+          </p>
+        )}
+      </div>
+
       {/* 전체 초기화 */}
       <div className="settings-section settings-danger">
         <h3 className="section-title">🔄 스케줄 전체 초기화</h3>
@@ -243,7 +289,7 @@ export default function Settings({ config, onBack }) {
           <div className="reset-confirm">
             <p className="reset-warning">
               ⚠️ 정말 초기화하시겠습니까?<br />
-              모든 멤버의 시간 데이터가 초기화됩니다.
+              모든 멤버의 시간 데이터와 메모가 초기화됩니다.
             </p>
             <div className="reset-buttons">
               <button

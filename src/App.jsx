@@ -22,7 +22,8 @@ const DEFAULT_MEMBERS = [
 // 기본 설정값
 const DEFAULT_CONFIG = {
   members: DEFAULT_MEMBERS,
-  timeRange: { start: 20, end: 25 } // 오후 8시 ~ 오전 1시
+  timeRange: { start: 20, end: 25 }, // 오후 8시 ~ 오전 1시
+  timeUnit: 60 // 시간 단위 (분): 60 | 30 | 10
 }
 
 // 메인 앱 컴포넌트
@@ -195,6 +196,7 @@ export default function App() {
         {screen === 'settings' && (
           <Settings
             config={config}
+            schedules={schedules}
             onBack={handleBack}
           />
         )}

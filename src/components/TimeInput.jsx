@@ -1,15 +1,30 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { db } from '../firebase'
 import { doc, setDoc, getDoc } from 'firebase/firestore'
-import { DAYS, formatHourShort, makeSlot } from '../utils/scheduler'
+import { DAYS, formatHourShort, makeSlot, generateAllSlots } from '../utils/scheduler'
+
+const TIME_UNIT_OPTIONS = [
+  { value: 60, label: '1시간' },
+  { value: 30, label: '30분' },
+  { value: 10, label: '10분' }
+]
 
 // 시간 입력 화면 컴포넌트
 // 요일 × 시간 격자에서 드래그/탭으로 가능한 시간 선택
 export default function TimeInput({ member, config, schedules, onBack }) {
   const timeRange = config?.timeRange || { start: 20, end: 25 }
-  const hours = []
+  const defaultUnit = config?.timeUnit || 60
+
+  // 시간 단위 (개인 선택)
+  const [timeUnit, setTimeUnit] = useState(defaultUnit)
+
+  // 시간 행 목록 생성 (시간 단위에 따라)
+  const timeRows = []
+  const stepsPerHour = 60 / timeUnit
   for (let h = timeRange.start; h <= timeRange.end; h++) {
-    hours.push(h)
+    for (let s = 0; s < stepsPerHour; s++) {
+      timeRows.push({ hour: h, minute: s * timeUnit })
+    }
   }
 
   // 선택된 슬롯 (Set<string>)
@@ -22,6 +37,8 @@ export default function TimeInput({ member, config, schedules, onBack }) {
   // 저장 상태
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  // 메모
+  const [memo, setMemo] = useState('')
   // 터치/마우스 충돌 방지
   const isTouchDevice = useRef(false)
 
@@ -33,17 +50,14 @@ export default function TimeInput({ member, config, schedules, onBack }) {
       const data = schedules[member.name]
       setSelectedSlots(new Set(data.slots || []))
       setMode(data.mode || 'available')
+      setMemo(data.memo || '')
+      if (data.timeUnit) setTimeUnit(data.timeUnit)
       setSaved(true)
     }
   }, [member, schedules])
 
   // 모든 슬롯 목록 생성
-  const allSlots = []
-  DAYS.forEach(({ key }) => {
-    hours.forEach(h => {
-      allSlots.push(makeSlot(key, h))
-    })
-  })
+  const allSlots = generateAllSlots(timeRange, timeUnit)
 
   // 슬롯 토글 (단일 클릭)
   const toggleSlot = useCallback((slot) => {
@@ -116,7 +130,7 @@ export default function TimeInput({ member, config, schedules, onBack }) {
 
   // 요일 전체 선택/해제 토글
   const toggleDay = (dayKey) => {
-    const daySlots = hours.map(h => makeSlot(dayKey, h))
+    const daySlots = timeRows.map(({ hour, minute }) => makeSlot(dayKey, hour, minute))
     const allSelected = daySlots.every(s => selectedSlots.has(s))
     setSelectedSlots(prev => {
       const next = new Set(prev)
@@ -135,6 +149,13 @@ export default function TimeInput({ member, config, schedules, onBack }) {
     clearAll()
   }
 
+  // 시간 단위 변경
+  const handleTimeUnitChange = (unit) => {
+    setTimeUnit(unit)
+    setSelectedSlots(new Set())
+    setSaved(false)
+  }
+
   // Firebase에 저장
   const handleSave = async () => {
     if (!member) return
@@ -150,6 +171,8 @@ export default function TimeInput({ member, config, schedules, onBack }) {
         [member.name]: {
           slots: Array.from(selectedSlots),
           mode,
+          timeUnit,
+          memo: memo.trim(),
           updatedAt: new Date().toISOString()
         }
       })
@@ -191,6 +214,22 @@ export default function TimeInput({ member, config, schedules, onBack }) {
         </p>
       </div>
 
+      {/* 시간 단위 선택 */}
+      <div className="time-unit-selector">
+        <span className="time-unit-label">시간 단위:</span>
+        <div className="time-unit-buttons">
+          {TIME_UNIT_OPTIONS.map(opt => (
+            <button
+              key={opt.value}
+              className={`btn btn-unit-sm ${timeUnit === opt.value ? 'btn-unit-active' : 'btn-outline'}`}
+              onClick={() => handleTimeUnitChange(opt.value)}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* 컨트롤 버튼들 */}
       <div className="input-controls">
         <button
@@ -213,7 +252,7 @@ export default function TimeInput({ member, config, schedules, onBack }) {
         ref={gridRef}
         onTouchMove={handleTouchMove}
       >
-        <table className="time-grid">
+        <table className={`time-grid ${timeUnit < 60 ? 'time-grid-compact' : ''}`}>
           <thead>
             <tr>
               <th className="time-header-corner"></th>
@@ -230,17 +269,19 @@ export default function TimeInput({ member, config, schedules, onBack }) {
             </tr>
           </thead>
           <tbody>
-            {hours.map(hour => (
-              <tr key={hour}>
-                <td className="hour-label">{formatHourShort(hour)}</td>
+            {timeRows.map(({ hour, minute }) => (
+              <tr key={`${hour}:${minute}`}>
+                <td className={`hour-label ${minute > 0 ? 'hour-label-sub' : ''}`}>
+                  {formatHourShort(hour, minute)}
+                </td>
                 {DAYS.map(({ key }) => {
-                  const slot = makeSlot(key, hour)
+                  const slot = makeSlot(key, hour, minute)
                   const isSelected = selectedSlots.has(slot)
                   return (
                     <td
                       key={slot}
                       data-slot={slot}
-                      className={`time-cell ${isSelected
+                      className={`time-cell ${timeUnit < 60 ? 'time-cell-compact' : ''} ${isSelected
                         ? (mode === 'available' ? 'cell-available' : 'cell-unavailable')
                         : (saved ? (mode === 'available' ? 'cell-unavailable' : 'cell-available') : '')}`}
                       onMouseDown={(e) => {
@@ -267,6 +308,18 @@ export default function TimeInput({ member, config, schedules, onBack }) {
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* 메모 입력 */}
+      <div className="memo-input-section">
+        <input
+          type="text"
+          className="input-field memo-input"
+          placeholder="한 줄 메모 (선택사항)"
+          value={memo}
+          onChange={(e) => { setMemo(e.target.value); setSaved(false) }}
+          maxLength={100}
+        />
       </div>
 
       {/* 선택 현황 & 저장 */}

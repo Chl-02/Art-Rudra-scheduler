@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react'
 import {
   DAYS, formatHour, formatHourShort, formatTimeRange,
-  analyzeSchedules, formatResultText, makeSlot, parseSlot
+  analyzeSchedules, formatResultText, makeSlot, parseSlot,
+  getSmallestTimeUnit, generateAllSlots
 } from '../utils/scheduler'
 
 // 결과 화면 컴포넌트
-// 겹치는 시간 분석 + 히트맵 + 스마트 추천 + 텍스트 복사
+// 겹치는 시간 분석 + 히트맵 + 스마트 추천 + 메모 + 텍스트 복사
 export default function Results({ config, schedules, onBack }) {
   const [copied, setCopied] = useState(false)
   const [activeTab, setActiveTab] = useState('recommend') // 'recommend' | 'heatmap'
@@ -13,10 +14,24 @@ export default function Results({ config, schedules, onBack }) {
 
   const timeRange = config?.timeRange || { start: 20, end: 25 }
   const members = config?.members || []
-  const hours = []
-  for (let h = timeRange.start; h <= timeRange.end; h++) {
-    hours.push(h)
-  }
+
+  // 분석에 사용할 시간 단위 (제출된 멤버 중 가장 작은 단위)
+  const analysisUnit = useMemo(
+    () => getSmallestTimeUnit(schedules),
+    [schedules]
+  )
+
+  // 히트맵/격자 행 생성
+  const timeRows = useMemo(() => {
+    const rows = []
+    const stepsPerHour = 60 / analysisUnit
+    for (let h = timeRange.start; h <= timeRange.end; h++) {
+      for (let s = 0; s < stepsPerHour; s++) {
+        rows.push({ hour: h, minute: s * analysisUnit })
+      }
+    }
+    return rows
+  }, [timeRange, analysisUnit])
 
   // 스케줄 분석 (메모이제이션)
   const result = useMemo(
@@ -24,9 +39,15 @@ export default function Results({ config, schedules, onBack }) {
     [schedules, members, timeRange]
   )
 
+  // 메모가 있는 멤버 목록
+  const membersWithMemo = useMemo(
+    () => members.filter(m => schedules[m.name]?.memo),
+    [members, schedules]
+  )
+
   // 클립보드 복사
   const handleCopy = async () => {
-    const text = formatResultText(result, members)
+    const text = formatResultText(result, members, schedules)
     try {
       await navigator.clipboard.writeText(text)
       setCopied(true)
@@ -63,6 +84,7 @@ export default function Results({ config, schedules, onBack }) {
         <h2 className="results-title">📊 결과</h2>
         <p className="results-subtitle">
           {result.submittedCount}/{members.length}명 등록 완료
+          {analysisUnit < 60 && ` (${analysisUnit}분 단위 분석)`}
         </p>
       </div>
 
@@ -101,7 +123,7 @@ export default function Results({ config, schedules, onBack }) {
                   <ul className="result-list">
                     {result.allAvailableGroups.map((g, i) => (
                       <li key={i} className="result-item result-item-gold">
-                        {formatTimeRange(g.day, g.start, g.end)}
+                        {formatTimeRange(g.day, g.start, g.end, g.startMinute, g.endMinute)}
                       </li>
                     ))}
                   </ul>
@@ -118,12 +140,12 @@ export default function Results({ config, schedules, onBack }) {
                   </h3>
                   <ul className="result-list">
                     {result.oneMissing.slice(0, 10).map((item, i) => {
-                      const { day, hour } = parseSlot(item.slot)
+                      const { day, hour, minute } = parseSlot(item.slot)
                       const dayLabel = DAYS.find(d => d.key === day)?.label
                       return (
                         <li key={i} className="result-item">
                           <span className="result-time">
-                            {dayLabel}요일 {formatHour(hour)}
+                            {dayLabel}요일 {formatHour(hour, minute)}
                           </span>
                           <span className="result-detail">
                             {item.count}/{item.total}명 가능
@@ -165,12 +187,12 @@ export default function Results({ config, schedules, onBack }) {
                   </h3>
                   <ul className="result-list">
                     {result.twoMissing.slice(0, 8).map((item, i) => {
-                      const { day, hour } = parseSlot(item.slot)
+                      const { day, hour, minute } = parseSlot(item.slot)
                       const dayLabel = DAYS.find(d => d.key === day)?.label
                       return (
                         <li key={i} className="result-item">
                           <span className="result-time">
-                            {dayLabel}요일 {formatHour(hour)}
+                            {dayLabel}요일 {formatHour(hour, minute)}
                           </span>
                           <span className="result-detail">
                             {item.count}/{item.total}명 가능
@@ -179,6 +201,23 @@ export default function Results({ config, schedules, onBack }) {
                         </li>
                       )
                     })}
+                  </ul>
+                </div>
+              )}
+
+              {/* 💬 멤버 메모 */}
+              {membersWithMemo.length > 0 && (
+                <div className="result-card result-memos">
+                  <h3 className="result-card-title">
+                    <span className="result-icon">💬</span> 멤버 메모
+                  </h3>
+                  <ul className="result-list">
+                    {membersWithMemo.map((m, i) => (
+                      <li key={i} className="result-item result-item-memo">
+                        <span className="memo-author">{m.name}</span>
+                        <span className="memo-content">{schedules[m.name].memo}</span>
+                      </li>
+                    ))}
                   </ul>
                 </div>
               )}
@@ -196,7 +235,7 @@ export default function Results({ config, schedules, onBack }) {
             <span className="legend-label">전원</span>
           </div>
           <div className="heatmap-container">
-            <table className="heatmap-grid">
+            <table className={`heatmap-grid ${analysisUnit < 60 ? 'heatmap-grid-compact' : ''}`}>
               <thead>
                 <tr>
                   <th></th>
@@ -206,26 +245,30 @@ export default function Results({ config, schedules, onBack }) {
                 </tr>
               </thead>
               <tbody>
-                {hours.map(hour => (
-                  <tr key={hour}>
-                    <td className="heatmap-hour">{formatHourShort(hour)}</td>
-                    {DAYS.map(({ key }) => {
-                      const slot = makeSlot(key, hour)
-                      const info = result.slotAvailability[slot]
-                      const count = info ? info.available.length : 0
-                      return (
-                        <td
-                          key={slot}
-                          className={`heatmap-cell ${count === result.totalMembers && count > 0 ? 'heatmap-full' : ''} ${selectedSlot === slot ? 'heatmap-selected' : ''}`}
-                          style={{ backgroundColor: getHeatmapColor(count) }}
-                          onClick={() => setSelectedSlot(selectedSlot === slot ? null : slot)}
-                        >
-                          {count > 0 ? count : ''}
-                        </td>
-                      )
-                    })}
-                  </tr>
-                ))}
+                {timeRows.map(({ hour, minute }) => {
+                  return (
+                    <tr key={`${hour}:${minute}`}>
+                      <td className={`heatmap-hour ${minute > 0 ? 'heatmap-hour-sub' : ''}`}>
+                        {formatHourShort(hour, minute)}
+                      </td>
+                      {DAYS.map(({ key }) => {
+                        const slot = makeSlot(key, hour, minute)
+                        const info = result.slotAvailability[slot]
+                        const count = info ? info.available.length : 0
+                        return (
+                          <td
+                            key={slot}
+                            className={`heatmap-cell ${count === result.totalMembers && count > 0 ? 'heatmap-full' : ''} ${selectedSlot === slot ? 'heatmap-selected' : ''}`}
+                            style={{ backgroundColor: getHeatmapColor(count) }}
+                            onClick={() => setSelectedSlot(selectedSlot === slot ? null : slot)}
+                          >
+                            {count > 0 ? count : ''}
+                          </td>
+                        )
+                      })}
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
@@ -233,12 +276,12 @@ export default function Results({ config, schedules, onBack }) {
           {/* 선택된 슬롯 상세 정보 */}
           {selectedSlot && result.slotAvailability[selectedSlot] && (() => {
             const info = result.slotAvailability[selectedSlot]
-            const { day, hour } = parseSlot(selectedSlot)
+            const { day, hour, minute } = parseSlot(selectedSlot)
             const dayLabel = DAYS.find(d => d.key === day)?.label
             return (
               <div className="slot-detail">
                 <div className="slot-detail-header">
-                  <strong>{dayLabel}요일 {formatHour(hour)}</strong>
+                  <strong>{dayLabel}요일 {formatHour(hour, minute)}</strong>
                   <span className="slot-detail-count">{info.available.length}/{result.totalMembers}명 가능</span>
                   <button className="btn btn-ghost slot-detail-close" onClick={() => setSelectedSlot(null)}>✕</button>
                 </div>

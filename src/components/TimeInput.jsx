@@ -32,6 +32,8 @@ export default function TimeInput({ member, config, schedules, onBack }) {
   const [outsideMode, setOutsideMode] = useState('unavailable')
   // 범위 설정 패널 표시 여부
   const [showRangeSettings, setShowRangeSettings] = useState(false)
+  // 전체 초기화 시에도 본인 설정을 유지할지 여부
+  const [preserveOnReset, setPreserveOnReset] = useState(false)
 
   // 범위 유효성
   const rangeValid = personalRange.end >= personalRange.start
@@ -85,6 +87,7 @@ export default function TimeInput({ member, config, schedules, onBack }) {
       if (data.timeUnit) setTimeUnit(data.timeUnit)
       if (data.timeRange) setPersonalRange(data.timeRange)
       if (data.outsideMode) setOutsideMode(data.outsideMode)
+      setPreserveOnReset(!!data.preserveOnReset)
       setSaved(true)
       loadedForMember.current = member.name
     }
@@ -273,6 +276,7 @@ export default function TimeInput({ member, config, schedules, onBack }) {
           timeUnit,
           timeRange: personalRange,
           outsideMode,
+          preserveOnReset,
           memo: memo.trim(),
           updatedAt: new Date().toISOString()
         }
@@ -346,6 +350,13 @@ export default function TimeInput({ member, config, schedules, onBack }) {
           title="표시 범위 밖 시간을 어떻게 처리할지"
         >
           범위 밖: {outsideMode === 'available' ? '✅ 가능' : '❌ 불가'}
+        </button>
+        <button
+          className={`btn btn-unit-sm btn-preserve ${preserveOnReset ? 'btn-preserve-on' : 'btn-outline'}`}
+          onClick={() => { setPreserveOnReset(v => !v); setSaved(false) }}
+          title="전체 초기화 시에도 본인 설정을 유지합니다. 저장 버튼을 눌러야 반영됩니다."
+        >
+          {preserveOnReset ? '🔒 초기화 시 유지: ON' : '🔓 초기화 시 유지: OFF'}
         </button>
       </div>
 

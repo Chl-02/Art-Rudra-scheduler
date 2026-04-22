@@ -1443,6 +1443,21 @@ body {
   margin-bottom: 8px;
 }
 
+/* 초기화 시 유지 토글 */
+.btn-preserve {
+  transition: all 0.2s ease;
+}
+.btn-preserve-on {
+  background: linear-gradient(135deg, rgba(201, 168, 76, 0.25), rgba(201, 168, 76, 0.12));
+  color: var(--gold-light);
+  border: 1px solid var(--gold-primary);
+  box-shadow: 0 0 12px var(--gold-glow);
+}
+.btn-preserve-on:hover {
+  background: linear-gradient(135deg, rgba(201, 168, 76, 0.35), rgba(201, 168, 76, 0.18));
+  box-shadow: 0 0 16px var(--gold-glow-strong);
+}
+
 .personal-range-panel {
   background: var(--bg-card);
   border: 1px solid var(--border-gold);

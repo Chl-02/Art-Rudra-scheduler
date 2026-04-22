@@ -120,6 +120,7 @@ export default function Settings({ config, schedules, onBack }) {
   }
 
   // 전체 스케줄 초기화 (새 주차 시작)
+  // preserveOnReset 플래그가 켜진 멤버의 데이터는 보존
   const handleReset = async () => {
     setResetting(true)
     try {
@@ -127,20 +128,34 @@ export default function Settings({ config, schedules, onBack }) {
       const scheduleRef = doc(db, 'schedules', 'current')
       const scheduleSnap = await getDoc(scheduleRef)
 
+      const preserved = {}
+      let preservedNames = []
+
       if (scheduleSnap.exists()) {
         const currentData = scheduleSnap.data()
-        // 히스토리에 보관
+        // 히스토리에 보관 (보존 여부와 무관하게 전체 스냅샷 저장)
         await addDoc(collection(db, 'history'), {
           archivedAt: new Date().toISOString(),
           data: currentData
         })
+
+        // 플래그가 켜진 멤버만 필터링하여 유지
+        Object.entries(currentData).forEach(([name, entry]) => {
+          if (entry && entry.preserveOnReset) {
+            preserved[name] = entry
+            preservedNames.push(name)
+          }
+        })
       }
 
-      // 현재 스케줄 초기화 (빈 문서로 덮어쓰기)
-      await setDoc(scheduleRef, {})
+      // 보존 대상만 남기고 나머지 초기화
+      await setDoc(scheduleRef, preserved)
 
       setShowResetConfirm(false)
-      alert('모든 스케줄이 초기화되었습니다. 새로운 주차를 시작하세요!')
+      const msg = preservedNames.length > 0
+        ? `스케줄이 초기화되었습니다.\n유지된 멤버: ${preservedNames.join(', ')}`
+        : '모든 스케줄이 초기화되었습니다. 새로운 주차를 시작하세요!'
+      alert(msg)
     } catch (error) {
       console.error('초기화 실패:', error)
       alert('초기화에 실패했습니다.')
@@ -279,7 +294,8 @@ export default function Settings({ config, schedules, onBack }) {
       <div className="settings-section settings-danger">
         <h3 className="section-title">🔄 스케줄 전체 초기화</h3>
         <p className="setting-hint">
-          새로운 주차를 시작할 때 사용합니다. 기존 데이터는 히스토리에 보관됩니다.
+          새로운 주차를 시작할 때 사용합니다. 기존 데이터는 히스토리에 보관됩니다.<br />
+          각 멤버가 입력 화면에서 "🔒 초기화 시 유지" 토글을 켜 둔 경우, 해당 멤버의 설정은 그대로 유지됩니다.
         </p>
         {!showResetConfirm ? (
           <button
@@ -292,7 +308,7 @@ export default function Settings({ config, schedules, onBack }) {
           <div className="reset-confirm">
             <p className="reset-warning">
               ⚠️ 정말 초기화하시겠습니까?<br />
-              모든 멤버의 시간 데이터와 메모가 초기화됩니다.
+              "🔒 초기화 시 유지"를 켠 멤버를 제외하고, 모든 멤버의 시간 데이터와 메모가 초기화됩니다.
             </p>
             <div className="reset-buttons">
               <button

@@ -246,6 +246,9 @@ export default function Settings({ config, schedules, onBack }) {
           현재: {formatSettingHour(timeStart)} ~ {formatSettingHour(timeEnd)}
           ({timeEnd - timeStart + 1}시간 범위)
         </p>
+        <p className="setting-hint">
+          ※ 이 범위는 신규 멤버의 기본값이자 결과 화면 히트맵의 표시 범위입니다. 멤버별 범위는 각자의 입력 페이지에서 ⚙️ 버튼으로 조정할 수 있습니다.
+        </p>
       </div>
 
       {/* 시간 단위 설정 */}

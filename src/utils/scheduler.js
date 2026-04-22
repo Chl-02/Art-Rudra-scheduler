@@ -168,6 +168,38 @@ export function analyzeSchedules(schedules, members, timeRange) {
   const analysisUnit = getSmallestTimeUnit(schedules)
   const allSlots = generateAllSlots(timeRange, analysisUnit)
 
+  // 멤버별 가능 슬롯 집합을 미리 계산 (개인 범위 안)
+  // 반환: Map<memberName, { range, outsideMode, availableSet: Set<slot> }>
+  const memberCache = new Map()
+  for (const member of submittedMembers) {
+    const memberData = schedules[member.name]
+    const memberRange = memberData.timeRange || timeRange
+    const memberOutsideMode = memberData.outsideMode || 'unavailable'
+    const memberUnit = memberData.timeUnit || 60
+    const expandedSlots = expandSlots(memberData.slots || [], memberUnit, analysisUnit)
+    // 개인 범위로 제한한 슬롯 전체 집합
+    const memberAllSlots = generateAllSlots(memberRange, analysisUnit)
+    const memberAvailable = getAvailableSlots(
+      { ...memberData, slots: expandedSlots },
+      memberAllSlots
+    )
+    memberCache.set(member.name, {
+      range: memberRange,
+      outsideMode: memberOutsideMode,
+      availableSet: new Set(memberAvailable)
+    })
+  }
+
+  // 슬롯이 해당 멤버에게 가능한지 판정
+  const isMemberAvailableAt = (memberName, slot) => {
+    const cache = memberCache.get(memberName)
+    if (!cache) return false
+    const { hour } = parseSlot(slot)
+    const inRange = hour >= cache.range.start && hour <= cache.range.end
+    if (inRange) return cache.availableSet.has(slot)
+    return cache.outsideMode === 'available'
+  }
+
   // 각 슬롯별 가능/불가능 멤버 집계
   const slotAvailability = {}
   for (const slot of allSlots) {
@@ -176,15 +208,7 @@ export function analyzeSchedules(schedules, members, timeRange) {
       unavailable: []
     }
     for (const member of submittedMembers) {
-      const memberData = schedules[member.name]
-      const memberUnit = memberData.timeUnit || 60
-      // 멤버의 슬롯을 분석 단위로 확장
-      const expandedSlots = expandSlots(memberData.slots || [], memberUnit, analysisUnit)
-      const memberAvailable = getAvailableSlots(
-        { ...memberData, slots: expandedSlots },
-        allSlots
-      )
-      if (memberAvailable.includes(slot)) {
+      if (isMemberAvailableAt(member.name, slot)) {
         slotAvailability[slot].available.push(member.name)
       } else {
         slotAvailability[slot].unavailable.push(member.name)
@@ -216,13 +240,6 @@ export function analyzeSchedules(schedules, members, timeRange) {
   for (const item of oneMissing) {
     const { day, hour, minute } = parseSlot(item.slot)
     const missingName = item.missing[0]
-    const memberData = schedules[missingName]
-    const memberUnit = memberData.timeUnit || 60
-    const expandedSlots = expandSlots(memberData.slots || [], memberUnit, analysisUnit)
-    const memberAvailable = getAvailableSlots(
-      { ...memberData, slots: expandedSlots },
-      allSlots
-    )
     const dayLabel = DAYS.find(d => d.key === day)?.label || day
 
     // ±1~2 슬롯 단위로 인접 확인
@@ -232,7 +249,13 @@ export function analyzeSchedules(schedules, members, timeRange) {
       const nearbyMinute = totalMinutes % 60
       if (nearbyHour < timeRange.start || nearbyHour > timeRange.end) continue
       const nearbySlot = makeSlot(day, nearbyHour, nearbyMinute)
-      if (!memberAvailable.includes(nearbySlot)) continue
+      // 제안된 인접 슬롯에서 빠졌던 멤버가 정말 가능해야 하고,
+      // 나머지 전원도 그 슬롯에 가능해야 함
+      if (!isMemberAvailableAt(missingName, nearbySlot)) continue
+      const othersAvailable = submittedMembers.every(m =>
+        m.name === missingName || isMemberAvailableAt(m.name, nearbySlot)
+      )
+      if (!othersAvailable) continue
 
       const key = `${item.slot}|${missingName}|${nearbySlot}`
       if (seenKeys.has(key)) continue

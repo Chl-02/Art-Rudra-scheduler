@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { db } from '../firebase'
 import { doc, setDoc, getDoc } from 'firebase/firestore'
-import { DAYS, formatHourShort, makeSlot, generateAllSlots } from '../utils/scheduler'
+import { DAYS, formatHourShort, makeSlot, generateAllSlots, parseSlot } from '../utils/scheduler'
 
 const TIME_UNIT_OPTIONS = [
   { value: 60, label: '1시간' },
@@ -9,21 +9,40 @@ const TIME_UNIT_OPTIONS = [
   { value: 10, label: '10분' }
 ]
 
+// 시간 단위(분)를 기본값으로 설정 화면에서 내려주는 시간 표시
+function formatSettingHour(h) {
+  const hour = h >= 24 ? h - 24 : h
+  if (hour === 0) return '자정(0시)'
+  return `${hour}시`
+}
+
 // 시간 입력 화면 컴포넌트
 // 요일 × 시간 격자에서 드래그/탭으로 가능한 시간 선택
 export default function TimeInput({ member, config, schedules, onBack }) {
-  const timeRange = config?.timeRange || { start: 20, end: 25 }
+  const defaultRange = config?.timeRange || { start: 20, end: 25 }
   const defaultUnit = config?.timeUnit || 60
 
   // 시간 단위 (개인 선택)
   const [timeUnit, setTimeUnit] = useState(defaultUnit)
 
+  // 개인 시간 범위 (멤버별)
+  const [personalRange, setPersonalRange] = useState(defaultRange)
+  // 표시 범위 밖 시간의 일괄 처리 모드
+  const [outsideMode, setOutsideMode] = useState('unavailable')
+  // 범위 설정 패널 표시 여부
+  const [showRangeSettings, setShowRangeSettings] = useState(false)
+
+  // 범위 유효성
+  const rangeValid = personalRange.end >= personalRange.start
+
   // 시간 행 목록 생성 (시간 단위에 따라)
   const timeRows = []
   const stepsPerHour = 60 / timeUnit
-  for (let h = timeRange.start; h <= timeRange.end; h++) {
-    for (let s = 0; s < stepsPerHour; s++) {
-      timeRows.push({ hour: h, minute: s * timeUnit })
+  if (rangeValid) {
+    for (let h = personalRange.start; h <= personalRange.end; h++) {
+      for (let s = 0; s < stepsPerHour; s++) {
+        timeRows.push({ hour: h, minute: s * timeUnit })
+      }
     }
   }
 
@@ -52,12 +71,14 @@ export default function TimeInput({ member, config, schedules, onBack }) {
       setMode(data.mode || 'available')
       setMemo(data.memo || '')
       if (data.timeUnit) setTimeUnit(data.timeUnit)
+      if (data.timeRange) setPersonalRange(data.timeRange)
+      if (data.outsideMode) setOutsideMode(data.outsideMode)
       setSaved(true)
     }
   }, [member, schedules])
 
   // 모든 슬롯 목록 생성
-  const allSlots = generateAllSlots(timeRange, timeUnit)
+  const allSlots = rangeValid ? generateAllSlots(personalRange, timeUnit) : []
 
   // 슬롯 토글 (단일 클릭)
   const toggleSlot = useCallback((slot) => {
@@ -174,6 +195,10 @@ export default function TimeInput({ member, config, schedules, onBack }) {
   // Firebase에 저장
   const handleSave = async () => {
     if (!member) return
+    if (!rangeValid) {
+      alert('종료 시간이 시작 시간보다 빨라 저장할 수 없습니다.')
+      return
+    }
     setSaving(true)
     try {
       const scheduleRef = doc(db, 'schedules', 'current')
@@ -181,12 +206,20 @@ export default function TimeInput({ member, config, schedules, onBack }) {
       const scheduleSnap = await getDoc(scheduleRef)
       const currentData = scheduleSnap.exists() ? scheduleSnap.data() : {}
 
+      // 현재 개인 범위 밖의 고아 슬롯 제거
+      const cleanedSlots = Array.from(selectedSlots).filter(s => {
+        const { hour } = parseSlot(s)
+        return hour >= personalRange.start && hour <= personalRange.end
+      })
+
       await setDoc(scheduleRef, {
         ...currentData,
         [member.name]: {
-          slots: Array.from(selectedSlots),
+          slots: cleanedSlots,
           mode,
           timeUnit,
+          timeRange: personalRange,
+          outsideMode,
           memo: memo.trim(),
           updatedAt: new Date().toISOString()
         }
@@ -244,6 +277,76 @@ export default function TimeInput({ member, config, schedules, onBack }) {
           ))}
         </div>
       </div>
+
+      {/* 개인 시간 범위 설정 & 범위 밖 토글 */}
+      <div className="input-settings-row">
+        <button
+          className="btn btn-outline btn-unit-sm"
+          onClick={() => setShowRangeSettings(v => !v)}
+          title="개인 시간 범위 설정"
+        >
+          ⚙️ 시간 범위 {formatSettingHour(personalRange.start)}~{formatSettingHour(personalRange.end)} {showRangeSettings ? '▲' : '▼'}
+        </button>
+        <button
+          className={`btn btn-mode btn-unit-sm ${outsideMode === 'available' ? 'mode-available' : 'mode-unavailable'}`}
+          onClick={() => { setOutsideMode(m => m === 'available' ? 'unavailable' : 'available'); setSaved(false) }}
+          title="표시 범위 밖 시간을 어떻게 처리할지"
+        >
+          범위 밖: {outsideMode === 'available' ? '✅ 가능' : '❌ 불가'}
+        </button>
+      </div>
+
+      {showRangeSettings && (
+        <div className="personal-range-panel">
+          <div className="time-range-setting">
+            <div className="time-range-input">
+              <label>시작 시간</label>
+              <select
+                className="select-field"
+                value={personalRange.start}
+                onChange={(e) => {
+                  const v = Number(e.target.value)
+                  setPersonalRange(r => ({ ...r, start: v }))
+                  setSaved(false)
+                }}
+              >
+                {Array.from({ length: 24 }, (_, i) => (
+                  <option key={i} value={i}>{formatSettingHour(i)}</option>
+                ))}
+                {Array.from({ length: 7 }, (_, i) => (
+                  <option key={i + 24} value={i + 24}>다음날 {formatSettingHour(i + 24)}</option>
+                ))}
+              </select>
+            </div>
+            <span className="time-range-separator">~</span>
+            <div className="time-range-input">
+              <label>종료 시간</label>
+              <select
+                className="select-field"
+                value={personalRange.end}
+                onChange={(e) => {
+                  const v = Number(e.target.value)
+                  setPersonalRange(r => ({ ...r, end: v }))
+                  setSaved(false)
+                }}
+              >
+                {Array.from({ length: 24 }, (_, i) => (
+                  <option key={i} value={i}>{formatSettingHour(i)}</option>
+                ))}
+                {Array.from({ length: 7 }, (_, i) => (
+                  <option key={i + 24} value={i + 24}>다음날 {formatSettingHour(i + 24)}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          {!rangeValid && (
+            <p className="setting-warning">⚠️ 종료 시간이 시작 시간보다 빠릅니다.</p>
+          )}
+          <p className="setting-hint">
+            이 범위는 나만의 입력 표 크기입니다. 범위 밖 시간은 위의 "범위 밖" 토글로 일괄 처리됩니다.
+          </p>
+        </div>
+      )}
 
       {/* 컨트롤 버튼들 */}
       <div className="input-controls">
@@ -355,7 +458,7 @@ export default function TimeInput({ member, config, schedules, onBack }) {
           <button
             className={`btn btn-gold btn-large ${saved ? 'btn-saved' : ''}`}
             onClick={handleSave}
-            disabled={saving}
+            disabled={saving || !rangeValid}
           >
             {saving ? '저장 중...' : saved ? '✓ 선택 완료!' : '⚡ 시간 선택하기'}
           </button>

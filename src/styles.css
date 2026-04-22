@@ -1433,6 +1433,46 @@ body {
   -webkit-touch-callout: none;
 }
 
+/* === 개인 시간 범위 설정 === */
+.input-settings-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.personal-range-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  margin-bottom: 8px;
+  animation: fadeInUp 0.2s ease-out;
+}
+
+.personal-range-panel .time-range-setting {
+  margin-bottom: 6px;
+}
+
+.personal-range-panel .setting-hint {
+  color: var(--text-dim);
+  font-size: 0.78rem;
+  margin-top: 8px;
+  line-height: 1.4;
+}
+
+@media (max-width: 768px) {
+  .input-settings-row .btn {
+    font-size: 0.75rem;
+    padding: 6px 10px;
+  }
+  .personal-range-panel {
+    padding: 12px;
+  }
+}
+
 /* === 시간 단위 선택 === */
 .time-unit-selector {
   display: flex;

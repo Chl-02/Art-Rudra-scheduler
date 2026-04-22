@@ -143,6 +143,21 @@ export default function TimeInput({ member, config, schedules, onBack }) {
     setSaved(false)
   }
 
+  // 시간 행 전체 선택/해제 토글 (해당 시간의 모든 요일)
+  const toggleTimeRow = (hour, minute) => {
+    const rowSlots = DAYS.map(({ key }) => makeSlot(key, hour, minute))
+    const allSelected = rowSlots.every(s => selectedSlots.has(s))
+    setSelectedSlots(prev => {
+      const next = new Set(prev)
+      rowSlots.forEach(s => {
+        if (allSelected) next.delete(s)
+        else next.add(s)
+      })
+      return next
+    })
+    setSaved(false)
+  }
+
   // 모드 전환
   const toggleMode = () => {
     setMode(prev => prev === 'available' ? 'unavailable' : 'available')
@@ -209,8 +224,8 @@ export default function TimeInput({ member, config, schedules, onBack }) {
         </h2>
         <p className="input-subtitle">
           {mode === 'available'
-            ? '가능한 시간을 선택하세요 (드래그로 여러 칸 선택 가능, 요일 클릭 시 전체 선택, 아래 버튼으로 불가능한 시간 선택 모드 전환 가능)'
-            : '불가능한 시간을 선택하세요 (나머지는 자동으로 가능 처리, 요일 클릭 시 전체 선택, 아래 버튼으로 가능한 시간 선택 모드 전환 가능)'}
+            ? '가능한 시간을 선택하세요 (드래그로 여러 칸 선택 가능, 요일/시간 클릭 시 해당 행·열 전체 선택, 아래 버튼으로 불가능한 시간 선택 모드 전환 가능)'
+            : '불가능한 시간을 선택하세요 (나머지는 자동으로 가능 처리, 요일/시간 클릭 시 해당 행·열 전체 선택, 아래 버튼으로 가능한 시간 선택 모드 전환 가능)'}
         </p>
       </div>
 
@@ -271,7 +286,11 @@ export default function TimeInput({ member, config, schedules, onBack }) {
           <tbody>
             {timeRows.map(({ hour, minute }) => (
               <tr key={`${hour}:${minute}`}>
-                <td className={`hour-label ${minute > 0 ? 'hour-label-sub' : ''}`}>
+                <td
+                  className={`hour-label ${minute > 0 ? 'hour-label-sub' : ''}`}
+                  onClick={() => toggleTimeRow(hour, minute)}
+                  title={`${formatHourShort(hour, minute)} 전체 요일 선택/해제`}
+                >
                   {formatHourShort(hour, minute)}
                 </td>
                 {DAYS.map(({ key }) => {

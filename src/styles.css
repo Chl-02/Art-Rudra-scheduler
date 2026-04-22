@@ -569,6 +569,13 @@ body {
   vertical-align: top;
   line-height: 1;
   white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.hour-label:hover {
+  background: rgba(201, 168, 76, 0.1);
+  color: var(--text-gold);
 }
 
 .time-cell {

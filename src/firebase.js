@@ -3,6 +3,7 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
+import { getFunctions } from "firebase/functions";
 
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
@@ -20,6 +21,8 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 // Firestore 데이터베이스 인스턴스
 export const db = getFirestore(app)
+// Cloud Functions 인스턴스 (자연어 파싱용, asia-northeast3 서울 리전)
+export const functions = getFunctions(app, 'asia-northeast3')
 
 // Firebase 설정이 완료되었는지 확인하는 헬퍼
 export function isFirebaseConfigured() {

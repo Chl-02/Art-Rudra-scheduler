@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 import { db } from '../firebase'
 import { doc, setDoc, getDoc } from 'firebase/firestore'
 import { DAYS, formatHourShort, makeSlot, generateAllSlots, parseSlot } from '../utils/scheduler'
+import { parseNaturalLanguage, isNlpConfigured } from '../utils/naturalLanguage'
 
 const TIME_UNIT_OPTIONS = [
   { value: 60, label: '1시간' },
@@ -58,14 +59,25 @@ export default function TimeInput({ member, config, schedules, onBack }) {
   const [saved, setSaved] = useState(false)
   // 메모
   const [memo, setMemo] = useState('')
+  // 자연어 입력 상태
+  const [nlpText, setNlpText] = useState('')
+  const [nlpLoading, setNlpLoading] = useState(false)
+  const [nlpError, setNlpError] = useState('')
+  const [nlpNotes, setNlpNotes] = useState('')
   // 터치/마우스 충돌 방지
   const isTouchDevice = useRef(false)
 
   const gridRef = useRef(null)
 
-  // 기존 데이터 로드
+  // 기존 데이터 로드 — 멤버가 바뀔 때 1회만 실행 (schedules 스냅샷 변경으로 인한 오버라이트 방지)
+  const loadedForMember = useRef(null)
   useEffect(() => {
-    if (member && schedules[member.name]) {
+    if (!member) {
+      loadedForMember.current = null
+      return
+    }
+    if (loadedForMember.current === member.name) return
+    if (schedules[member.name]) {
       const data = schedules[member.name]
       setSelectedSlots(new Set(data.slots || []))
       setMode(data.mode || 'available')
@@ -74,6 +86,7 @@ export default function TimeInput({ member, config, schedules, onBack }) {
       if (data.timeRange) setPersonalRange(data.timeRange)
       if (data.outsideMode) setOutsideMode(data.outsideMode)
       setSaved(true)
+      loadedForMember.current = member.name
     }
   }, [member, schedules])
 
@@ -190,6 +203,46 @@ export default function TimeInput({ member, config, schedules, onBack }) {
     setTimeUnit(unit)
     setSelectedSlots(new Set())
     setSaved(false)
+  }
+
+  // 자연어 입력으로 슬롯 적용
+  // mode를 반환 mode에 맞춰 갈아끼우고, slots를 기존 선택에 합집합 병합
+  const handleNlpApply = async () => {
+    setNlpError('')
+    setNlpNotes('')
+    if (!nlpText.trim()) {
+      setNlpError('문장을 입력해주세요.')
+      return
+    }
+    if (!rangeValid) {
+      setNlpError('시간 범위가 유효하지 않습니다.')
+      return
+    }
+    setNlpLoading(true)
+    try {
+      const result = await parseNaturalLanguage(nlpText, {
+        timeRange: personalRange,
+        timeUnit
+      })
+      // 슬롯 범위/단위 한 번 더 방어적 필터링
+      const allSet = new Set(allSlots)
+      const accepted = result.slots.filter(s => allSet.has(s))
+      // 기존 선택을 항상 덮어쓰기 (자연어 문장이 "전체 상태"를 기술한다고 본다)
+      setMode(result.mode)
+      setSelectedSlots(new Set(accepted))
+      const skipped = result.slots.length - accepted.length
+      const noteParts = [
+        `${accepted.length}개 슬롯 적용됨`,
+        skipped > 0 ? `${skipped}개는 범위 밖이라 제외` : '',
+        result.notes
+      ].filter(Boolean)
+      setNlpNotes(noteParts.join(' · '))
+      setSaved(false)
+    } catch (e) {
+      setNlpError(e?.message || '파싱 실패')
+    } finally {
+      setNlpLoading(false)
+    }
   }
 
   // Firebase에 저장
@@ -345,6 +398,38 @@ export default function TimeInput({ member, config, schedules, onBack }) {
           <p className="setting-hint">
             이 범위는 나만의 입력 표 크기입니다. 범위 밖 시간은 위의 "범위 밖" 토글로 일괄 처리됩니다.
           </p>
+        </div>
+      )}
+
+      {/* 자연어 입력 패널 (기본 표시) */}
+      {isNlpConfigured() && (
+        <div className="nlp-panel">
+          <div className="nlp-hint">
+            ✨ 자연어 입력 — 예: <em>"월수금 6~10시 가능, 주말 전부 가능"</em>, <em>"목금 빼고 다 가능"</em>, <em>"주말은 8시 이후만"</em>
+          </div>
+          <div className="nlp-input-row">
+            <input
+              type="text"
+              className="input-field nlp-input"
+              placeholder="자연어로 일정을 설명하세요 (시간은 기본 오후로 해석)"
+              value={nlpText}
+              onChange={(e) => setNlpText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !nlpLoading) handleNlpApply()
+              }}
+              maxLength={500}
+              disabled={nlpLoading}
+            />
+            <button
+              className="btn btn-gold"
+              onClick={handleNlpApply}
+              disabled={nlpLoading || !nlpText.trim()}
+            >
+              {nlpLoading ? '파싱 중...' : '✨ 적용'}
+            </button>
+          </div>
+          {nlpError && <p className="nlp-error">⚠️ {nlpError}</p>}
+          {nlpNotes && <p className="nlp-notes">💡 {nlpNotes}</p>}
         </div>
       )}
 

@@ -71,5 +71,52 @@ GitHub 레포 Settings → Pages → Source를 **GitHub Actions**로 설정해�
 ## 기술 스택
 - **프론트엔드**: React 18 + Vite
 - **백엔드**: Firebase Firestore (무료 티어)
+- **자연어 파서(선택)**: Firebase Cloud Functions v2 (asia-northeast3) + Google Gemini 2.5 Flash (무료 티어)
 - **호스팅**: GitHub Pages (무료)
 - **폰트**: Cinzel (영문), Noto Sans KR (한글)
+
+---
+
+## ✨ 자연어 시간 입력 (선택 기능)
+
+`"목금 6시~10시 빼고 다 가능"`, `"주말은 저녁 8시 이후 가능"` 같은 문장을 Gemini가 파싱해 슬롯에 자동 적용합니다.
+
+### 동작 구조
+```
+브라우저 → Firebase httpsCallable('parseSchedule') → Gemini API (generativelanguage.googleapis.com) → JSON(slots[]) → 화면 반영
+```
+- Gemini API 키는 Google Secret Manager에만 저장 (Cloud Function 시크릿). 프론트에는 노출되지 않습니다.
+- Firebase SDK가 함수 URL·CORS를 자동 처리하므로 별도 설정 없음.
+- Firebase 미설정 시 버튼이 자동으로 숨겨집니다.
+
+### 설정 절차 (최초 1회)
+
+1. **Firebase Blaze 플랜 업그레이드** — Functions 사용 필수 (무료 한도 내 $0).
+2. **Gemini API 키 발급** — [aistudio.google.com/apikey](https://aistudio.google.com/apikey) → **Create API key** → Firebase 프로젝트(`art-rudra-scheduler`)에 바인딩 → 키 복사. **결제 정보 등록 불필요, 완전 무료**.
+3. **Firebase CLI 준비**:
+   ```bash
+   npm install -g firebase-tools
+   firebase login
+   cd functions && npm install && cd ..
+   ```
+4. **시크릿 등록**:
+   ```bash
+   firebase functions:secrets:set GEMINI_API_KEY
+   # → 위에서 복사한 키 붙여넣기
+   ```
+5. **함수 배포**:
+   ```bash
+   firebase deploy --only functions
+   ```
+   - 처음이면 Cloud Build / Artifact Registry / Secret Manager API 활성화 링크가 뜸 → 열어서 Enable.
+6. **Cloud Run 인증 해제** (1회만): 콘솔 [Cloud Run → parseschedule → 보안 → 인증되지 않은 호출 허용](https://console.cloud.google.com/run?project=art-rudra-scheduler) 또는 `gcloud run services add-iam-policy-binding parseschedule --region=asia-northeast3 --member=allUsers --role=roles/run.invoker --project=art-rudra-scheduler`.
+
+### 운영
+- 프론트는 자동으로 `parseSchedule`(asia-northeast3) 함수를 호출.
+- 키 갱신 시: `firebase functions:secrets:set GEMINI_API_KEY` → `firebase deploy --only functions`.
+- 로그: `firebase functions:log --only parseSchedule`.
+
+### 비용
+- **Gemini 2.5 Flash 무료 티어**: 분당 10회, 일 1,500회, 분당 100만 토큰. 팀 스케줄링 용도로 초과 불가능한 수준.
+- Cloud Functions 무료 한도(월 200만 호출) 내 $0.
+- **완전 무료로 운영** (Blaze 업그레이드는 카드 등록만 필요, 실제 과금 없음).

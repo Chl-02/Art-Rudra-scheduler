@@ -1473,6 +1473,66 @@ body {
   }
 }
 
+/* === 자연어 입력 패널 === */
+.nlp-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-lg);
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  animation: fadeInUp 0.2s ease-out;
+}
+
+.nlp-hint {
+  color: var(--text-dim);
+  font-size: 0.78rem;
+  line-height: 1.5;
+  margin-bottom: 10px;
+}
+.nlp-hint em {
+  color: var(--text-secondary);
+  font-style: normal;
+  background: rgba(255, 215, 0, 0.08);
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin: 0 2px;
+}
+
+.nlp-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+.nlp-input {
+  flex: 1;
+  min-width: 0;
+}
+.nlp-input-row .btn {
+  white-space: nowrap;
+}
+
+.nlp-error {
+  color: #ff7a8a;
+  font-size: 0.82rem;
+  margin: 8px 0 0;
+  line-height: 1.4;
+}
+.nlp-notes {
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  margin: 8px 0 0;
+  line-height: 1.4;
+}
+
+@media (max-width: 768px) {
+  .nlp-panel {
+    padding: 12px;
+  }
+  .nlp-input-row {
+    flex-direction: column;
+  }
+}
+
 /* === 시간 단위 선택 === */
 .time-unit-selector {
   display: flex;
